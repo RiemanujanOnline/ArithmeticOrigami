@@ -1,0 +1,8 @@
+SUNYA: verification log, 2026-11-26 (the day of this run)
+
+sha256sum -c Sunya.sha256
+5f32c0d169bcaf262e5b4aa7259d017ef19881df921fe3e418b661e792a724f8  Sunya.lean
+
+lake build OrigamiArithmetica.Sunya   (Lean 4.34.1, Mathlib v4.34.1)
+  291 theorems, 0 errors, 0 warnings, built in 43 s; axioms: none in 42, and at most Classical.choice, Quot.sound, propext in
+      the other 249

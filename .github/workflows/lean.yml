@@ -1,0 +1,55 @@
+# Builds the record's 4 Lean files when a push changes them, one file at a time; the 4 files build with no warning.
+name: Lean
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["docs/lean/**", "lakefile.toml", "lake-manifest.json", "lean-toolchain", ".github/workflows/lean.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: lean-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      LEAN_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Memory headroom, a swap file beside the 16 GB of memory
+        run: |
+          free -m
+          swapon --show
+          df -h / /mnt
+          nohup vmstat -n -t -S M 15 > "$RUNNER_TEMP/memory.log" 2>&1 &
+          where=$(df --output=avail,target -BG / /mnt | tail -n +2 | sort -n | tail -n 1 | awk '{print $2}')
+          room=$(df --output=avail -BG "$where" | tail -n 1 | tr -dc '0-9')
+          size=$(( room - 10 < 12 ? room - 10 : 12 ))
+          if [ "$size" -lt 4 ]; then echo "::warning::${room} GB free on $where: no swap file added"; exit 0; fi
+          sudo fallocate -l "${size}G" "$where/lean.swap"
+          sudo chmod 600 "$where/lean.swap"
+          sudo mkswap "$where/lean.swap"
+          sudo swapon "$where/lean.swap"
+          swapon --show
+          free -m
+
+      - uses: leanprover/lean-action@fe408643ea7367d8c0404a8be3975bb145f5fb64 # v1.7.0
+        with:
+          build-args: "--wfail"
+
+      - name: Memory and disk at the end, and any process the kernel stopped
+        if: always()
+        run: |
+          free -m
+          swapon --show
+          df -h / /mnt
+          echo "Memory every 15 s, in MB (swpd: swap in use; free: memory free):"
+          cat "$RUNNER_TEMP/memory.log" || true
+          awk 'NR > 2 { if (f == "" || $4 < f) f = $4; if ($3 > s) s = $3 } END { print "least free memory " f " MB; most swap in use " s " MB" }' "$RUNNER_TEMP/memory.log" || true
+          sudo dmesg | grep -iE 'killed process|out of memory' | tail -n 20 || true

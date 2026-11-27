@@ -1,0 +1,125 @@
+# Sends one version of the record to Zenodo as a draft when a release is published, after every file checks against the tag's SHA-256 lists.
+name: Zenodo
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      stamp:
+        description: "The record's stamp, as 20261118_223730"
+        required: true
+      version:
+        description: "Zenodo's version for the trial, as alpha (empty: the stamp)"
+        required: false
+
+concurrency:
+  group: zenodo
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  TABLES: https://bfiles.riemanujan.com
+  TAG: ${{ github.event.release.tag_name || inputs.stamp }}
+  VERSION: ${{ github.event.release.name || inputs.version }}
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'release' && 'zenodo' || 'zenodo-sandbox' }}
+    env:
+      ZENODO_API: ${{ github.event_name == 'release' && 'https://zenodo.org/api' || 'https://sandbox.zenodo.org/api' }}
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: The tag is a record's stamp
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^[0-9]{8}_[0-9]{6}$ ]] || { echo "refused: '$TAG' is not a record's stamp, as 20261118_223730"; exit 1; }
+
+      - name: The repository's files against SHA256SUMS
+        run: |
+          set -euo pipefail
+          [ "$(grep -c '  tables\.zip$' SHA256SUMS)" = 1 ] || { echo "refused: SHA256SUMS has no one line for tables.zip"; exit 1; }
+          grep -v '  tables\.zip$' SHA256SUMS > "$RUNNER_TEMP/files.sums"
+          [ -s "$RUNNER_TEMP/files.sums" ] || { echo "refused: SHA256SUMS lists no file"; exit 1; }
+          sha256sum -c "$RUNNER_TEMP/files.sums" | { grep -v ': OK$' || true; }
+
+      - name: Each table at its address against tables.SHA256SUMS
+        run: |
+          set -euo pipefail
+          [ -s tables.SHA256SUMS ] || { echo "refused: tables.SHA256SUMS lists no table"; exit 1; }
+          list="$PWD/tables.SHA256SUMS"
+          mkdir -p "$RUNNER_TEMP/tables"
+          while read -r _ name; do
+            case "$name" in */*|.*|"") echo "refused: '$name' is no table's name"; exit 1;; esac
+            curl -fsS --retry 3 -o "$RUNNER_TEMP/tables/$name" "$TABLES/$name"
+          done < tables.SHA256SUMS
+          cd "$RUNNER_TEMP/tables"
+          sha256sum -c "$list" | { grep -v ': OK$' || true; }
+
+      - name: tables.zip at its address against SHA256SUMS
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 3 -o tables.zip "$TABLES/tables_${TAG}.zip"
+          grep '  tables\.zip$' SHA256SUMS > "$RUNNER_TEMP/zip.sums"
+          sha256sum -c "$RUNNER_TEMP/zip.sums"
+
+      - name: The record as one zip, the files SHA256SUMS lists and SHA256SUMS
+        run: |
+          set -euo pipefail
+          zip="$RUNNER_TEMP/ArithmeticOrigami_${TAG}.zip"
+          { grep -v '  tables\.zip$' SHA256SUMS | sed 's/^[0-9a-f]*  //'; echo SHA256SUMS; } | zip -qX -MM "$zip" -@
+          grep -v '  tables\.zip$' SHA256SUMS > "$RUNNER_TEMP/whole.sums"
+          mkdir -p "$RUNNER_TEMP/whole"
+          unzip -oq "$zip" -d "$RUNNER_TEMP/whole"
+          cd "$RUNNER_TEMP/whole"
+          sha256sum -c "$RUNNER_TEMP/whole.sums" | { grep -v ': OK$' || true; }
+          held=$(find . -type f | wc -l)
+          [ $((held)) -eq $(( $(wc -l < "$RUNNER_TEMP/whole.sums") + 1 )) ] || { echo "refused: the zip holds a file SHA256SUMS does not list"; exit 1; }
+
+      - name: The form's fields, with a licence named
+        run: |
+          set -euo pipefail
+          form="$GITHUB_WORKSPACE/.zenodo.json"
+          jq -e '[.license, .title, .description] | all(type == "string" and length > 0)' "$form" > /dev/null \
+            || { echo "refused: .zenodo.json must name a license, a title and a description"; exit 1; }
+          jq -e '.creators | type == "array" and length > 0' "$form" > /dev/null \
+            || { echo "refused: .zenodo.json names no author"; exit 1; }
+          version=$(printf '%s' "${VERSION:-}" | awk 'NR == 1 {print tolower($1)}')
+          jq --arg version "${version:-$TAG}" --arg date "${TAG:0:4}-${TAG:4:2}-${TAG:6:2}" \
+             --arg notes "SHA-256 of SHA256SUMS: $(sha256sum SHA256SUMS | cut -d' ' -f1)" \
+             '{metadata: (. + {version: $version, publication_date: $date, notes: $notes})}' "$form" > "$RUNNER_TEMP/metadata.json"
+
+      - name: The draft on Zenodo
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+          ZENODO_RECORD: ${{ vars.ZENODO_RECORD }}
+        run: |
+          set -euo pipefail
+          [ -n "$ZENODO_TOKEN" ] || { echo "refused: this environment holds no ZENODO_TOKEN"; exit 1; }
+          [[ "$ZENODO_RECORD" =~ ^[0-9]*$ ]] || { echo "refused: ZENODO_RECORD is not an id"; exit 1; }
+          zenodo() { curl -fsS -H "Authorization: Bearer $ZENODO_TOKEN" "$@"; }
+          if [ -n "$ZENODO_RECORD" ]; then
+            draft=$(zenodo -X POST "$ZENODO_API/deposit/depositions/$ZENODO_RECORD/actions/newversion" | jq -er '.links.latest_draft')
+          else
+            draft=$(zenodo -X POST -H "Content-Type: application/json" -d '{}' "$ZENODO_API/deposit/depositions" | jq -er '.links.self')
+          fi
+          state=$(zenodo --retry 3 "$draft")
+          bucket=$(jq -er '.links.bucket' <<< "$state")
+          for id in $(jq -r '.files[]?.id' <<< "$state"); do
+            zenodo -X DELETE "$draft/files/$id"
+          done
+          for file in "$RUNNER_TEMP/ArithmeticOrigami_${TAG}.zip" tables.zip README.md SHA256SUMS menu_tasting.pdf gazette.pdf free_parameters.pdf bigbang_fold.pdf foldcyclopedia.pdf; do
+            zenodo --retry 3 --upload-file "$file" "$bucket/$(basename "$file")" > /dev/null
+          done
+          zenodo --retry 3 -X PUT -H "Content-Type: application/json" --data-binary "@$RUNNER_TEMP/metadata.json" "$draft" > /dev/null
+          state=$(zenodo --retry 3 "$draft")
+          names=$(printf '%s\n' "ArithmeticOrigami_${TAG}.zip" README.md SHA256SUMS tables.zip menu_tasting.pdf gazette.pdf free_parameters.pdf bigbang_fold.pdf foldcyclopedia.pdf | sort)
+          [ "$names" = "$(jq -r '.files[].filename' <<< "$state" | sort)" ] || { echo "refused: the draft's files are not the record's nine"; exit 1; }
+          echo "A draft, not published: $(jq -r '.links.html' <<< "$state")" | tee -a "$GITHUB_STEP_SUMMARY"

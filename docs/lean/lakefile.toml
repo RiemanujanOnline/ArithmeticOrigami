@@ -1,0 +1,14 @@
+# Origami Arithmetica: the Lean proofs, one file for each PDF, built in order.
+name = "origami_lean"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["OrigamiArithmetica"]
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.34.1"
+
+[[lean_lib]]
+name = "OrigamiArithmetica"
+roots = ["OrigamiArithmetica.Sunya", "OrigamiArithmetica.Foldcyclopedia", "OrigamiArithmetica.FreeParameters", "OrigamiArithmetica.BigBang"]

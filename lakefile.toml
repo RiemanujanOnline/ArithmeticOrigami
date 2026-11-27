@@ -1,0 +1,17 @@
+# The record's Lean library (docs/lean/OrigamiArithmetica, the record's lean/ folder), built at the repository's root: `lake exe cache get && lake build`.
+# Mathlib and Lean as each file's header names them. No package options, as the files were checked (`lake build` in the record's lean/).
+# Four modules, each importing the one before it: Sunya, Foldcyclopedia, FreeParameters, BigBang.
+name = "origami_lean"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["OrigamiArithmetica"]
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.34.1"
+
+[[lean_lib]]
+name = "OrigamiArithmetica"
+srcDir = "docs/lean"
+roots = ["OrigamiArithmetica.Sunya", "OrigamiArithmetica.Foldcyclopedia", "OrigamiArithmetica.FreeParameters", "OrigamiArithmetica.BigBang"]

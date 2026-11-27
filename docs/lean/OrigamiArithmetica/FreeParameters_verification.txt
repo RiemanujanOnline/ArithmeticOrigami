@@ -1,0 +1,8 @@
+FREE PARAMETERS: verification log, 2026-11-26 (the day of this run)
+
+sha256sum -c FreeParameters.sha256
+77371300c4da1dd038e16225510384f150bc0f7e089212df9151a943a8b073aa  FreeParameters.lean
+
+lake build OrigamiArithmetica.FreeParameters   (Lean 4.34.1, Mathlib v4.34.1)
+  207 theorems, 0 errors, 0 warnings, built in 45 s; axioms: none in 82, and at most Classical.choice, Quot.sound, propext in
+      the other 125

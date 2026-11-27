@@ -1,0 +1,11 @@
+{
+  "title": "Arithmetic Origami · Śūnya Conjecture",
+  "upload_type": "dataset",
+  "access_right": "open",
+  "license": "cc-by-sa-4.0",
+  "creators": [
+    {"name": "Sarkar, Sambuddha"}
+  ],
+  "keywords": ["Lean 4", "integer sequences", "continued fractions", "Arithmetic Origami", "Śūnya conjecture", "Euclidean algorithm", "Stern–Brocot tree", "number theory", "particle physics", "nuclear physics", "cosmology", "formal methods"],
+  "description": "<p>Derived from [0; z] = 1/z, in pure Integers (ℤ) and Rationals (ℚ). Every proof verified in Lean. Selected by today's measurement; tested by the next.</p><p>Opening: menu_tasting.pdf, Riemanujan's Thanksgiving Tasting Menu. Front page: gazette.pdf. Pages 2 and 3: the free parameters of the Standard Model and ΛCDM; the Big Bang beside the origami's levels. Statements: Lean 4 files with their checksums. The term tables. The Foldcyclopedia: its public entries.</p><p>README.md says what is claimed and what is not, GLOSSARY.md defines every word, CLAIMS.md lists each claim with its file and check. A later state is a new version.</p><p>Workflow Delineation<br>Author: Sambuddha Sarkar.<br>Computation, Śūnya conjecture and axiom, and the methodology. Definitions, theorems and kernel checks formulated, reviewed and validated.<br>AI assistance:<br>Principal investigation within bounded searches.<br>Text, code and computation runs drafted and executed under the author's review.</p>"
+}

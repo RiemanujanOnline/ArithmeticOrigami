@@ -1,0 +1,8 @@
+FOLDCYCLOPEDIA: verification log, 2026-11-26 (the day of this run)
+
+sha256sum -c Foldcyclopedia.sha256
+3d9970e4baa412a2546d447bc2c56b78468252f818e896e35c4520122ebd136a  Foldcyclopedia.lean
+
+lake build OrigamiArithmetica.Foldcyclopedia   (Lean 4.34.1, Mathlib v4.34.1)
+  169 theorems, 0 errors, 0 warnings, built in 324 s; axioms: none in 5, and at most Classical.choice, Quot.sound, propext in
+      the other 164

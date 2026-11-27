@@ -1,0 +1,8 @@
+BIG BANG: verification log, 2026-11-26 (the day of this run)
+
+sha256sum -c BigBang.sha256
+da34adf4c09672456f359bccecdfb4c5a425eeaf0429402873f30da8878c36c0  BigBang.lean
+
+lake build OrigamiArithmetica.BigBang   (Lean 4.34.1, Mathlib v4.34.1)
+  53 theorems, 0 errors, 0 warnings, built in 12 s; axioms: none in 17, and at most Classical.choice, Quot.sound, propext in
+      the other 36

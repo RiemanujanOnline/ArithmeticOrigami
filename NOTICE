@@ -1,0 +1,16 @@
+Arithmetic Origami
+Copyright (c) 2026 Sambuddha Sarkar. All rights reserved.
+Author: Sambuddha Sarkar
+
+The Lean 4 files (.lean) distributed with this notice are licensed under the Apache License,
+Version 2.0 (the file LICENSE). The licence covers those files only, and not the pages, papers,
+pictures or other files beside them. Copyright and the licence cover the files, never the
+mathematics they state.
+
+Workflow Delineation
+* Author: Sambuddha Sarkar.
+  Computation, Śūnya conjecture and axiom, and the methodology. Definitions, theorems and kernel
+  checks formulated, reviewed and validated.
+* AI assistance:
+  Principal investigation within bounded searches.
+  Text, code and computation runs drafted and executed under the author's review.
